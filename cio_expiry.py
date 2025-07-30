@@ -1,0 +1,157 @@
+import requests
+import yfinance as yf
+import pandas as pd
+from datetime import datetime
+from bs4 import BeautifulSoup
+import mibian
+import schedule
+import time
+
+# To run a job
+def job():
+    
+    nifty = yf.Ticker('^NSEI')
+    # Get daily bars - 'Open' for each trading day
+    df = nifty.history(period='5d', interval='1d')
+
+    # Get the open price for the most recent trading day (today if market has opened)
+    todays_open = round(df.iloc[-1]['Open'])
+    print("Nifty open price at 9:15AM:", todays_open)
+
+    def round_to_nearest_strike(nifty_spot_price, step=50):
+        return round(nifty_spot_price / step) * step
+
+    nifty_spot_price = round_to_nearest_strike(todays_open)
+    print(f"Nearest spot price: {nifty_spot_price}")
+        
+
+    # User configuration
+    UNDERLYING = "NIFTY"  # or "BANKNIFTY" or stock symbol
+    TOTAL_CE_COI = 0
+    TOTAL_PE_COI = 0
+
+    # Get current date and time
+    now = datetime.now()
+
+    # Get the full weekday name (e.g., "Tuesday")
+    day = now.strftime('%A')
+
+    print(f"Today is: {day}")
+
+    def days_to_expire(day):
+        match day:
+            case "Monday":
+                return 4
+            case "Tuesday":
+                return 3
+            case "Wednesday":
+                return 7
+            case "Thursday":
+                return 6
+            case "Friday":
+                return 5
+            case _:
+                return "Invalid day"
+            
+    # Get days remaning for the expiry
+    days_to_expire = days_to_expire(day)
+    print(f"Days to expire: {days_to_expire}")
+
+    start = nifty_spot_price             # NIFTY SPOT PRICE
+    steps = days_to_expire               # How many steps to left and right
+    step_size = 50                       # Step difference
+
+    # Create list going left (decreasing)
+    left_side = [start - step_size * i for i in range(steps, 0, -1)]
+
+    # Current number itself
+    center = [start]
+
+    # Create list going right (increasing)
+    right_side = [start + step_size * i for i in range(1, steps + 1)]
+
+    # Combine all
+    result = left_side + center + right_side
+
+    STRIKE_PRICE_YOU_WANT = result
+
+    print(f"STRIKE_PRICE_YOU_WANT: {STRIKE_PRICE_YOU_WANT}")
+
+    headers = {
+        "user-agent": "Mozilla/5.0",
+        "accept-language": "en-US,en;q=0.9"
+    }
+    session = requests.Session()
+
+    # Step 1: Set cookies
+    _ = session.get("https://www.nseindia.com/option-chain", headers=headers)
+
+    # Step 2: Fetch option chain data
+    url = f"https://www.nseindia.com/api/option-chain-indices?symbol={UNDERLYING}"
+    data = session.get(url, headers=headers).json()
+
+    # Step 3: Get the nearest expiry
+    if day == "Wednesday" or day == "Thursday":
+        expiry = data['records']['expiryDates'][1]
+    else:
+        expiry = data['records']['expiryDates'][0]
+        
+    print("===================")
+    print(f"Expiry Selected: {expiry}")
+    print("===================")
+
+    # Step 4: Find the specific strike price and print change in OIs
+    for record in data['records']['data']:
+        for STRIKE_PRICE in STRIKE_PRICE_YOU_WANT:
+            if record.get("expiryDate") == expiry and record.get("strikePrice") == STRIKE_PRICE:
+                ce = record.get("CE", {})
+                pe = record.get("PE", {})
+                if ce:
+                    TOTAL_CE_COI += ce['changeinOpenInterest']
+                    # print(f"Strike: {STRIKE_PRICE} CE change in OI: {ce['changeinOpenInterest']}")
+                if pe:
+                    TOTAL_PE_COI += pe['changeinOpenInterest']
+                    # print(f"Strike: {STRIKE_PRICE} PE change in OI: {pe['changeinOpenInterest']}")
+                break
+
+    print(f"TOTAL_CE_COI: {TOTAL_CE_COI}")
+    print(f"TOTAL_PE_COI: {TOTAL_PE_COI}")
+    TOTAL_COI = TOTAL_CE_COI + TOTAL_PE_COI
+    print(f"TOTAL_COI: {TOTAL_COI}")
+    CE_DIFF =(TOTAL_CE_COI/TOTAL_COI)*100
+    PE_DIFF = (TOTAL_PE_COI/TOTAL_COI)*100
+    PCR_DIFF = abs(PE_DIFF - CE_DIFF)
+    print(f"CE Difference: {CE_DIFF}")
+    print(f"PE Difference: {PE_DIFF}")
+    print(f"PCR Difference in %: {PCR_DIFF}")
+    print("===================")
+    if PCR_DIFF < 20:
+        DIFF_ANS = "YES"
+    else:
+        DIFF_ANS = "NO"
+
+    def get_signal():
+        if PE_DIFF > CE_DIFF:
+            return True
+        else:
+            return False
+        
+    if get_signal():
+        print(f"Signal : BUY CALL")
+        if DIFF_ANS == "YES":
+            print("Wait for COI to increase beyond 20% for greater accuracy")
+    else:
+        print(f"Signal : BUY PUT")
+        if DIFF_ANS == "YES":
+            print("Wait for COI to increase beyond 20% for greater accuracy")
+    print("===================")
+    print("\n")
+    print("\n")
+    print("\n")
+
+# Schedule the job every 15 minutes
+schedule.every(1).minutes.do(job)
+
+while True:
+    schedule.run_pending()  # Run pending jobs
+    time.sleep(1)           # Sleep to avoid busy-waiting    
