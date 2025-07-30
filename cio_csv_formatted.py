@@ -12,14 +12,14 @@ import os
 
 # To run a job
 def job():
-    
+
+    print("\n")
     nifty = yf.Ticker('^NSEI')
     # Get daily bars - 'Open' for each trading day
     df = nifty.history(period='5d', interval='1d')
 
     # Get the open price for the most recent trading day (today if market has opened)
     todays_open = round(df.iloc[-1]['Open'])
-    print("\n")
     print("Nifty open price at 9:15AM:", todays_open)
 
     def round_to_nearest_strike(nifty_spot_price, step=50):
@@ -100,8 +100,6 @@ def job():
         expiry = data['records']['expiryDates'][1]
     else:
         expiry = data['records']['expiryDates'][0]
-
-    expiry = data['records']['expiryDates'][0]
         
     print("===================")
     print(f"Expiry Selected: {expiry}")
@@ -146,9 +144,7 @@ def job():
             return SIGNAL
         
     FINAL_SIGNAL = get_signal()
-    print(f"Signal : {FINAL_SIGNAL}")
-    if DIFF_ANS == "YES":
-        print("Wait for COI to increase beyond 20% for greater accuracy")
+    #print(f"Signal : {FINAL_SIGNAL}")
     #print("===================")
     timestamp_str = datetime.now().strftime('%H:%M:%S')
 
@@ -202,7 +198,10 @@ def job():
         data = list(reader)  # Read all rows
 
     # Print the data as a table with headers
-    print(tabulate(data[1:], headers=data[0], tablefmt='pretty'))    
+    print(tabulate(data[1:], headers=data[0], tablefmt='pretty'))
+
+    if DIFF_ANS == "YES":
+        print("Wait for PCR DIFF to increase beyond 20% for greater accuracy")
         
 
 
@@ -211,4 +210,4 @@ schedule.every(1).minutes.do(job)
 
 while True:
     schedule.run_pending()  # Run pending jobs
-    time.sleep(1)           # Sleep to avoid busy-waiting    
+    time.sleep(1)           # Sleep to avoid busy-waiting
