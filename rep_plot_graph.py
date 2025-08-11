@@ -1,6 +1,7 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
+from datetime import datetime
 import time
 import os
 from pathlib import Path
@@ -8,7 +9,8 @@ from pathlib import Path
 time.sleep(2)
 # directory = Path('E:\\Trading\\')
 directory = Path(os.getcwd())
-prefix = 'PCR_DATA'
+todays_date = datetime.now().strftime('%Y_%m_%d')
+prefix = f'PCR_DATA_{todays_date}'
 
 csv_file = next((f.name for f in directory.iterdir()
                  if f.name.startswith(prefix) and f.is_file()), None)
