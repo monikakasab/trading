@@ -45,25 +45,6 @@ def job():
     else:
         PCR = round((TOTAL_PE_COI / TOTAL_CE_COI), 2)
 
-    # ======================== NEW =====================
-
-    #print(f"TOTAL_CE_COI: {TOTAL_CE_COI}")
-    #print(f"TOTAL_PE_COI: {TOTAL_PE_COI}")
-    #TOTAL_COI = TOTAL_CE_COI + TOTAL_PE_COI
-    #print(f"TOTAL_COI: {TOTAL_COI}")
-    #PCR = round((TOTAL_PE_COI / TOTAL_CE_COI), 2)
-    #CE_DIFF = (TOTAL_CE_COI / TOTAL_COI) * 100
-    #PE_DIFF = (TOTAL_PE_COI / TOTAL_COI) * 100
-    #PCR_DIFF = abs(PE_DIFF - CE_DIFF)
-    #print(f"CE Difference: {CE_DIFF}")
-    #print(f"PE Difference: {PE_DIFF}")
-    #print(f"PCR Difference in %: {PCR_DIFF}")
-    #print("===================")
-    #if PCR_DIFF < 20:
-    #    DIFF_ANS = "YES"
-    #else:
-    #    DIFF_ANS = "NO"
-
     def get_signal():
         if PCR >= 1:
             SIGNAL = "BUY CALL"
@@ -73,8 +54,6 @@ def job():
             return SIGNAL
 
     FINAL_SIGNAL = get_signal()
-    #print(f"Signal : {FINAL_SIGNAL}")
-    #print("===================")
 
     # Get current time in IST
     ist_time = datetime.now(tz=ZoneInfo('Asia/Kolkata'))
@@ -129,25 +108,10 @@ def job():
 
     print_data_on_console()
 
-    #if DIFF_ANS == "YES":
-    #    print("Wait for PCR DIFF to increase beyond 20% for greater accuracy")
-
 
 def get_basic_info():
     print("\n")
-    nifty = yf.Ticker('^NSEI')
-    # Get daily bars - 'Open' for each trading day
-    df = nifty.history(period='5d', interval='1d')
-
-    # Get the open price for the most recent trading day (today if market has opened)
-    todays_open = round(df.iloc[-1]['Open'])
-    print("Nifty open price at 9:15AM:", todays_open)
-
-    def round_to_nearest_strike(nifty_spot_price, step=50):
-        return round(nifty_spot_price / step) * step
-
-    nifty_spot_price = round_to_nearest_strike(todays_open)
-    print(f"Nearest spot price: {nifty_spot_price}")
+    print(f"Today is: {constants.DAY}")
 
     def days_to_expire(day):
         match day:
@@ -166,7 +130,24 @@ def get_basic_info():
 
     # Get days remaning for the expiry
     days_to_expire = days_to_expire(constants.DAY)
+    if days_to_expire == "Invalid day":
+        print("Invalid day. Exiting script.")
+        sys.exit()
     print(f"Days to expire: {days_to_expire}")
+
+    nifty = yf.Ticker('^NSEI')
+    # Get daily bars - 'Open' for each trading day
+    df = nifty.history(period='5d', interval='1d')
+
+    # Get the open price for the most recent trading day (today if market has opened)
+    todays_open = round(df.iloc[-1]['Open'])
+    print("Nifty open price at 9:15AM:", todays_open)
+
+    def round_to_nearest_strike(nifty_spot_price, step=50):
+        return round(nifty_spot_price / step) * step
+
+    nifty_spot_price = round_to_nearest_strike(todays_open)
+    print(f"Nearest spot price: {nifty_spot_price}")
 
     start = nifty_spot_price  # NIFTY SPOT PRICE
     steps = days_to_expire  # How many steps to left and right
@@ -213,17 +194,11 @@ def set_day_and_nearest_expiry(data):
 
     # Get the full weekday name (e.g., "Tuesday")
     constants.DAY = now.strftime('%A')
-    print(f"Today is: {constants.DAY}")
 
     if constants.DAY == "Friday":
         constants.EXPIRY = data['records']['expiryDates'][1]
     else:
         constants.EXPIRY = data['records']['expiryDates'][0]
-    # Get the nearest expiry
-    # if constants.DAY == "Wednesday" or constants.DAY == "Thursday":
-    #    constants.EXPIRY = data['records']['expiryDates'][1]
-    # else:
-    #    constants.EXPIRY = data['records']['expiryDates'][0]
 
 
 def print_expiry(expiry):
