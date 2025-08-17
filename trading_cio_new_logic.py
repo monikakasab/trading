@@ -149,13 +149,6 @@ def get_basic_info():
     nifty_spot_price = round_to_nearest_strike(todays_open)
     print(f"Nearest spot price: {nifty_spot_price}")
 
-    # Get current date and time
-    now = datetime.now()
-
-    # Get the full weekday name (e.g., "Tuesday")
-    constants.DAY = now.strftime('%A')
-    print(f"Today is: {constants.DAY}")
-
     def days_to_expire(day):
         match day:
             case "Monday":
@@ -213,8 +206,19 @@ def get_option_chain_data():
     return data
 
 
-def set_nearest_expiry(data):
-    constants.EXPIRY = data['records']['expiryDates'][0]
+def set_day_and_nearest_expiry(data):
+
+    # Get current date and time
+    now = datetime.now()
+
+    # Get the full weekday name (e.g., "Tuesday")
+    constants.DAY = now.strftime('%A')
+    print(f"Today is: {constants.DAY}")
+
+    if constants.DAY == "Friday":
+        constants.EXPIRY = data['records']['expiryDates'][1]
+    else:
+        constants.EXPIRY = data['records']['expiryDates'][0]
     # Get the nearest expiry
     # if constants.DAY == "Wednesday" or constants.DAY == "Thursday":
     #    constants.EXPIRY = data['records']['expiryDates'][1]
@@ -256,7 +260,7 @@ def wait_until_9_18_and_run():
     # If current time is after 9:18 AM, run immediately
     if now_naive.time() >= target_time:
         data = get_option_chain_data()
-        set_nearest_expiry(data)
+        set_day_and_nearest_expiry(data)
         return
 
     # Otherwise, wait until 9:18 AM
@@ -268,7 +272,7 @@ def wait_until_9_18_and_run():
 
     # Run your job
     data = get_option_chain_data()
-    set_nearest_expiry(data)
+    set_day_and_nearest_expiry(data)
 
 
 exit_time = time(15, 30)  # 3:30 PM
