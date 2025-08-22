@@ -195,10 +195,12 @@ def set_day_and_nearest_expiry(data):
     # Get the full weekday name (e.g., "Tuesday")
     constants.DAY = now.strftime('%A')
 
-    if constants.DAY == "Friday":
-        constants.EXPIRY = data['records']['expiryDates'][1]
-    else:
-        constants.EXPIRY = data['records']['expiryDates'][0]
+    constants.EXPIRY = data['records']['expiryDates'][0]
+
+    # if constants.DAY == "Friday":
+    #     constants.EXPIRY = data['records']['expiryDates'][1]
+    # else:
+    #     constants.EXPIRY = data['records']['expiryDates'][0]
 
 
 def print_expiry(expiry):
@@ -250,13 +252,21 @@ def wait_until_9_18_and_run():
     set_day_and_nearest_expiry(data)
 
 
+def run_job_once_at_3rd_minute():
+    while True:
+        now = datetime.now()
+        if now.minute % 3 == 0:
+            job()
+            break  # Exit the loop after running the job once
+
+
 exit_time = time(15, 30)  # 3:30 PM
 
 # Start at 9:18 AM
 wait_until_9_18_and_run()
 get_basic_info()
 print_expiry(constants.EXPIRY)
-job()
+run_job_once_at_3rd_minute()
 
 # Schedule the job every 3 minutes
 schedule.every(3).minutes.do(job)
