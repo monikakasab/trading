@@ -29,11 +29,18 @@ def wait_until_9_18_and_run():
 
 
 wait_until_9_18_and_run()
-t.sleep(5)
 # directory = Path('E:\\Trading\\')s
 directory = Path(os.getcwd())
 todays_date = datetime.now().strftime('%Y_%m_%d')
 prefix = f'PCR_DATA_{todays_date}'
+
+wait_seconds = 2
+filename = f"{prefix}.csv"
+while not os.path.exists(filename):
+                 print(
+                     f"{filename} not found. Waiting for {wait_seconds} seconds..."
+                 )
+                 t.sleep(wait_seconds)
 
 csv_file = next((f.name for f in directory.iterdir()
                  if f.name.startswith(prefix) and f.is_file()), None)
